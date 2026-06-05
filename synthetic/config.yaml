@@ -1,0 +1,33 @@
+data:
+  S: 129
+  T: 1.0
+  T0: 0.0
+  dim: 1
+  condition_dim: 0
+  shuffle: true
+  N: 50000
+
+model:
+  num_layers: 3
+  d_model: 128
+  hidden_dim: 256
+  temb_dim: 128
+  time_scale_factor: 1000
+  ema_decay: 0.999
+  sigma_input: False 
+
+training:
+  batch_size: 128
+  clip_grad: true
+  lr: 1.0e-3
+  n_epochs: 300
+  weight_decay: 1.0e-05
+  use_loss_weighting: False
+  loss_power: 1.0
+  save_freq: 100
+
+sampling:
+  num_steps: 1000
+  num_samples_per_cond: 5
+  ode_solver: 'euler'
+  early_stopping: 1.0e-04

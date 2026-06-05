@@ -1,0 +1,40 @@
+data:
+  S: 129
+  T: 1.0
+  T0: 0.0
+  condition_dim: 32
+  dim: 256
+  shuffle: true
+
+model:
+  num_layers: 8
+  d_model: 256
+  num_heads: 8
+  dim_feedforward: 1024
+  dropout: 0.1
+  temb_dim: 512
+  num_output_FFresiduals: 2
+  time_scale_factor: 1000
+  ema_decay: 0.999
+  time_exponential: 1000.0
+  time_base: 0.5
+  use_edm: False
+  sigma_input: False #True
+
+training:
+  batch_size: 64
+  clip_grad: true
+  lr: 0.0002
+  n_epochs: 10000
+  weight_decay: 1.0e-05
+  normalize_targets: True
+  use_loss_weighting: False
+  loss_weight_power: 1.0
+  loss_weight_floor: 0.05
+  save_freq: 100
+
+sampling:
+  num_steps: 1000
+  num_samples_per_cond: 5
+  ode_solver: 'euler'
+  early_stopping: 1.0e-04
