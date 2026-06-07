@@ -31,7 +31,7 @@ echo "Running script on GPU..."
 start_time=$(date +%s)
 
 srun python /scratch/baptista/GenerativeDiscreteDiffusionBPS/music/train.py 
-#srun python /scratch/baptista/GenerativeDiscreteDiffusionBPS/music/compute_metrics.py --model_run ./runs/run_20260505_230717
+#srun python /scratch/baptista/GenerativeDiscreteDiffusionBPS/music/post_process.py --model_run ./runs/run_20260505_230717
 
 end_time=$(date +%s)
 runtime=$((end_time - start_time))

@@ -38,9 +38,9 @@ def denoising_loss(forward, model, cfg, minibatch, divergence='quad'):
 
     # compute loss per sample
     if divergence == 'quad':
-        loss = bregman_divergence_quadratic(model_x0, minibatch).sum(dim=-1)
+        loss = bregman_divergence_quadratic(model_x0, x0).sum(dim=-1)
     elif divergence == 'xlogx':
-        loss = bregman_divergence_xlogx(model_x0, minibatch).sum(dim=-1)
+        loss = bregman_divergence_xlogx(model_x0, x0).sum(dim=-1)
     else:
         raise ValueError("Unsupported divergence type")
 

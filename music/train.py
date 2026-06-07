@@ -9,28 +9,21 @@ import os
 import yaml
 from datetime import datetime
 
-sys.path.append('./model')
-from forward import PoissonFolmerBase
-from losses import denoising_loss
-from model_utils import load_model
+sys.path.append('../src')
+from forward import PoissonFolmer
+from loss import denoising_loss
+from denoiser import load_model
+from utils import create_run_dir
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 
-def create_run_dir(base_dir):
-    # Create base directory if it doesn't exist
-    os.makedirs(base_dir, exist_ok=True)
-    # Create a unique folder name using timestamp
-    run_name = datetime.now().strftime("run_%Y%m%d_%H%M%S")
-    run_dir = os.path.join(base_dir, run_name)
-    os.makedirs(run_dir, exist_ok=True)
-    return run_dir
-
-pwd = '/scratch/baptista/GenerativeDiscreteDiffusionBPS/music'
+#pwd = '/scratch/baptista/GenerativeDiscreteDiffusionBPS/music'
+pwd = '.'
 run_dir = create_run_dir(pwd + '/runs')
 
 # load config file
-with open(pwd + "/configs/config.yaml", "r") as f:
+with open(pwd + "/config.yaml", "r") as f:
     cfg_dict = yaml.safe_load(f)
 cfg = ml_collections.ConfigDict(cfg_dict)
 
@@ -65,7 +58,7 @@ dataloader = torch.utils.data.DataLoader(descrambled_train_data,
 model, EMAmodel = load_model(cfg, mean_data, var_data, device)
 
 # define forward process and model
-forward = PoissonFolmerBase(S=cfg.data.S, T0=cfg.data.T0, T=cfg.data.T, dim=cfg.data.dim-cfg.data.condition_dim)
+forward = PoissonFolmer(S=cfg.data.S, T0=cfg.data.T0, T=cfg.data.T, dim=cfg.data.dim-cfg.data.condition_dim)
 
 # define optimizer
 optimizer = torch.optim.Adam(model.parameters(), cfg.training.lr, 

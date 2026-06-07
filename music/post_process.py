@@ -13,10 +13,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 
-sys.path.append('model')
-from forward import PoissonFolmerBase
-from denoiser import ConditionalSequenceTransformer, PFConditionalPrecond
-from model_utils import load_model, Intensity
+sys.path.append('../src')
+from forward import PoissonFolmer
+from denoiser import ConditionalSequenceTransformer, PFConditionalPrecond, load_model
+from model_utils import Intensity
 from sampling import TauLeaping, Euler
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -38,6 +38,7 @@ def parse_args():
     return parser.parse_args()
 
 def main():
+    
     args = parse_args()
     model_run = args.model_run
 
@@ -73,7 +74,7 @@ def main():
     model, _ = load_model(cfg, mean_data, var_data, device)
 
     # define forward process
-    forward = PoissonFolmerBase(S=cfg.data.S, T0=cfg.data.T0, T=cfg.data.T, dim=cfg.data.dim-cfg.data.condition_dim)
+    forward = PoissonFolmer(S=cfg.data.S, T0=cfg.data.T0, T=cfg.data.T, dim=cfg.data.dim-cfg.data.condition_dim)
     
     # load NN model
     model_path = Path(model_run + '/checkpoint.pt')
@@ -87,7 +88,23 @@ def main():
     model_intensity = Intensity(model, max_time=cfg.data.T, S=cfg.data.S, denormalize=cfg.training.normalize_targets)
 
     ###############################
-    # POST PROCESS
+    # PLOT ERROR
+    ###############################
+
+    plt.figure(figsize=(10,6))
+    plt.subplot(2,1,1)
+    plt.semilogy(checkpoint['loss'])
+    plt.xlabel('Iteration')
+    plt.ylabel('Training Loss')
+    plt.subplot(2,1,2)
+    plt.semilogy(checkpoint['grad_norms'])
+    plt.xlabel('Iteration')
+    plt.ylabel('Gradient Norm')
+    plt.savefig(model_run + '/training_curves.pdf', bbox_inches='tight')
+    plt.close() 
+
+    ###############################
+    # PLOT GRID OF MODEL SAMPLES
     ###############################
 
     test_data_idx_all = np.arange(9)
@@ -99,13 +116,13 @@ def main():
     for (k,test_data_idx) in enumerate(test_data_idx_all): #args.test_idx:
         conditioner = torch.from_numpy(descrambled_test_data[test_data_idx, 0:cfg.data.condition_dim]).to(device).view(1, cfg.data.condition_dim)
         # define initial condition for sampling
-        x0 = forward.sample_initial_cond(1)
+        x0 = forward.sample_initial(1, device=device)
         # define time grid and samples
         time_grid = torch.linspace(forward.T0, forward.T-cfg.sampling.early_stopping, cfg.sampling.num_steps)
         if cfg.sampling.ode_solver == 'euler':
-            samples, _ = Euler(forward, conditioner, model_intensity, time_grid, x0, device=device)
+            samples, _ = Euler(forward, model_intensity, time_grid, x0, device=device, conditioner=conditioner)
         elif cfg.sampling.ode_solver == 'tau-leaping':
-            samples, _ = TauLeaping(forward, conditioner, model_intensity, time_grid, x0, device=device, corrector_steps=2)
+            samples, _ = TauLeaping(forward, model_intensity, time_grid, x0, device=device, conditioner=conditioner, corrector_steps=2)
         else:
             raise ValueError('Sampler not recognized')
         samples_all[k,:] = torch.cat((conditioner.cpu(), samples), dim=1)
@@ -126,6 +143,50 @@ def main():
     file_name = model_run + '/samples_plot.pdf'
     plt.savefig(file_name, bbox_inches='tight')
     plt.close()
+
+    ###############################
+    # COMPUTE METRICS
+    ###############################
+
+    def hellinger_distance(p, q):
+        """Compute the Hellinger distance between two discrete distributions p and q."""
+        return torch.sqrt(0.5 * torch.sum((torch.sqrt(p) - torch.sqrt(q)) ** 2))
+
+    # define time grid and samples
+    time_grid = torch.linspace(forward.T0, forward.T-1e-4, cfg.sampling.num_steps)
+    time_grid = time_grid.to(device)
+
+    # -------------- Sample the model ------------------
+    test_indices = range(len(descrambled_test_data))  # use all test data indices
+    distances = torch.zeros((len(test_indices), cfg.sampling.num_samples_per_cond))
+    for (j,test_data_idx) in enumerate(test_indices):
+
+        # extract true samples for this conditioner
+        conditioner     = torch.from_numpy(descrambled_test_data[test_data_idx, 0:cfg.data.condition_dim]).view(1, cfg.data.condition_dim)
+        conditioner_all = torch.tile(conditioner, (cfg.sampling.num_samples_per_cond, 1)).to(device)
+        
+        true_samples = torch.from_numpy(descrambled_test_data[test_data_idx, :]).long().view(1, -1).numpy()
+    
+        # define initial condition for sampling
+        x0 = forward.sample_initial(cfg.sampling.num_samples_per_cond, device=device).to(device)
+
+        if cfg.sampling.ode_solver == 'euler':
+            samples, _ = Euler(forward, model_intensity, time_grid, x0, device=device, conditioner=conditioner_all)
+        elif cfg.sampling.ode_solver == 'tau-leaping':
+            samples, _ = TauLeaping(forward, model_intensity, time_grid, x0, device=device, conditioner=conditioner_all, corrector_steps=2)
+        else:
+            raise ValueError(f"Unknown ODE solver: {cfg.sampling.ode_solver}")
+
+        for k in range(cfg.sampling.num_samples_per_cond):
+            gen_samples_k    = torch.cat((conditioner[0,:], samples[k,:].long().detach().cpu())).view(1, -1).numpy()
+            empirical_dist_p = torch.from_numpy(np.bincount(gen_samples_k.flatten().astype(np.int64), minlength=forward.S)).float()
+            empirical_dist_p = empirical_dist_p / empirical_dist_p.sum()  # normalize to get probabilities
+            empirical_dist_q = torch.from_numpy(np.bincount(true_samples.flatten().astype(np.int64), minlength=forward.S)).float()
+            empirical_dist_q = empirical_dist_q / empirical_dist_q.sum()  # normalize to get probabilities
+            distances[j,k]   = hellinger_distance(empirical_dist_p, empirical_dist_q)
+
+    torch.save(distances, model_run+'/hellinger_distances.pt')
+
 
 if __name__=='__main__':
     main()

@@ -44,7 +44,7 @@ def Euler(
             if conditioner is None:
                 intensities = model(x.float(), t_tensor)
             else:
-                intensities = model(conditioner, x.float(), t_tensor)
+                intensities = model(x.float(), t_tensor, conditioner)
 
         # Mask out jumps that would exceed S-1
         state_mask = (x.long() + 1) < S                            # (B, D)
@@ -160,7 +160,7 @@ def TauLeaping(
             if conditioner is None:
                 rates = model(x.float(), t_tensor)
             else:
-                rates = model(conditioner, x.float(), t_tensor)
+                rates = model(x.float(), t_tensor, conditioner)
 
         # Predictor step
         x = _tau_leap_step(
@@ -181,7 +181,7 @@ def TauLeaping(
                     if conditioner is None:
                         corr_rates = model(x.float(), t_tensor)
                     else:
-                        corr_rates = model(conditioner, x.float(), t_tensor)
+                        corr_rates = model(x.float(), t_tensor, conditioner)
                 if corrector_noise_scale > 0.0:
                     # Proxy for forward-rate mixing in discrete PC samplers.
                     corr_rates = corr_rates + corrector_noise_scale * torch.ones_like(corr_rates)
