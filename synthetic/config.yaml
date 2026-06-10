@@ -28,6 +28,5 @@ training:
 
 sampling:
   num_steps: 1000
-  num_samples_per_cond: 5
   ode_solver: 'euler'
   early_stopping: 1.0e-04

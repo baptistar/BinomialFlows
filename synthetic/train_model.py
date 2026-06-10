@@ -26,9 +26,6 @@ with open("./config.yaml", "r") as f:
      cfg_dict = yaml.safe_load(f)
 cfg = ml_collections.ConfigDict(cfg_dict)
 
-cfg.data.N = 1000
-cfg.training.n_epochs = 50
-
 # define set of distributions
 dists = [datasets.Poisson(5.0, 40, device), \
         datasets.PoissonMixture(device), \

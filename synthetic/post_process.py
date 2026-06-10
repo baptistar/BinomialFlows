@@ -32,8 +32,8 @@ with open("./config.yaml", "r") as f:
 cfg = ml_collections.ConfigDict(cfg_dict)
 
 # # define data and sampling parameters 
-num_MC_samples = 100 #10000
-cfg.sampling.num_samples = 100
+#num_MC_samples = 100 #10000
+#cfg.sampling.num_samples = 100
 
 run_dir = './runs/run_20260605_124805'
 
