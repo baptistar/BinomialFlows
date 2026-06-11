@@ -7,7 +7,8 @@ import yaml
 import copy
 
 import sys
-sys.path.append('../src') 
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '../src'))
 
 from model import DenoisingMLP
 from loss import denoising_loss
