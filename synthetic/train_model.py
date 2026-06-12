@@ -17,12 +17,13 @@ import datasets
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # create directory for saving models and figures
-if not os.path.exists('./runs'):
-    os.makedirs('./runs')
-run_dir = create_run_dir('./runs')
+pwd = '/scratch/baptista'
+if not os.path.exists(pwd+'/runs'):
+    os.makedirs(pwd+'/runs')
+run_dir = create_run_dir(pwd+'/runs')
 
 # load config file
-with open("./config.yaml", "r") as f:
+with open(pwd+"/config.yaml", "r") as f:
      cfg_dict = yaml.safe_load(f)
 cfg = ml_collections.ConfigDict(cfg_dict)
 
